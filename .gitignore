@@ -1,0 +1,16 @@
+.env
+.env.local
+.DS_Store
+.codex
+.codex/
+Prod
+Prompt
+node_modules/
+dist/
+.turbo/
+.next/
+coverage/
+tmp/
+*.log
+services/gateway/gateway
+services/verifier/verifier
