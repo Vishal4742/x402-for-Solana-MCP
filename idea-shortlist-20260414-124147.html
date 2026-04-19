@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agentic Engineering Grant Idea Shortlist</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --surface: #f7f6f3;
+        --border: #e9e9e7;
+        --text: #37352f;
+        --muted: #787774;
+        --accent: #2eaadc;
+        --good: #2f9e44;
+        --warn: #c97a00;
+        --bad: #d94841;
+        --radius: 10px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      .page {
+        width: min(960px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 40px 0 72px;
+      }
+
+      h1, h2, h3 {
+        margin: 0 0 12px;
+        line-height: 1.2;
+      }
+
+      h1 {
+        font-size: 2.4rem;
+        margin-bottom: 8px;
+      }
+
+      p, li {
+        font-size: 15px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        margin-top: 18px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 14px;
+      }
+
+      .idea {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-top: 18px;
+      }
+
+      .rank {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 10px;
+      }
+
+      .winner {
+        border-color: rgba(46, 170, 220, 0.35);
+        box-shadow: 0 0 0 1px rgba(46, 170, 220, 0.1);
+      }
+
+      .score-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+
+      .score-table th,
+      .score-table td {
+        text-align: left;
+        padding: 8px 10px;
+        border-top: 1px solid var(--border);
+        vertical-align: top;
+        font-size: 14px;
+      }
+
+      .pill {
+        display: inline-block;
+        font-size: 12px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #eef8fc;
+        color: #126782;
+        margin-right: 6px;
+        margin-bottom: 6px;
+      }
+
+      .good { color: var(--good); }
+      .warn { color: var(--warn); }
+      .bad { color: var(--bad); }
+
+      ul {
+        margin: 10px 0 0 20px;
+        padding: 0;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .section-title {
+        margin-top: 28px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <div class="muted">Idea Shortlist • Theme: Notion • Generated: 2026-04-14 12:41:47 UTC</div>
+        <h1>Agentic Engineering Grant Shortlist</h1>
+        <p class="muted">
+          User profile: infra builder, wants a 1-2 week MVP, strongest wedge is agent tooling,
+          and the first reachable buyers are founders shipping MVPs.
+        </p>
+      </header>
+
+      <section class="panel">
+        <h2>Recommendation</h2>
+        <p>
+          Build <strong>Agent Treasury Guard for Solana MVPs</strong>. It solves a real founder
+          fear right now: letting agents touch money without giving them unlimited keys. The
+          product can launch narrow, piggyback on existing Solana wallet primitives, and still
+          uses crypto for something genuinely native: programmable spend control over onchain
+          assets.
+        </p>
+        <div>
+          <span class="pill">Fastest credible MVP</span>
+          <span class="pill">Clear buyer pain</span>
+          <span class="pill">Strong crypto necessity</span>
+          <span class="pill">Good grant story</span>
+        </div>
+      </section>
+
+      <section class="section-title">
+        <h2>Shortlist</h2>
+      </section>
+
+      <article class="idea winner">
+        <div class="rank">Rank #1 • Winner</div>
+        <h3>Agent Treasury Guard for Solana MVPs</h3>
+        <p>
+          Give AI agents scoped Solana wallets with spend caps, recipient allowlists, transaction
+          simulation, and human escalation so founders can automate actions without exposing the
+          whole treasury.
+        </p>
+        <table class="score-table">
+          <tr><th>Why it wins</th><td>Sharpest pain, fastest wedge, and easiest story to explain to grant reviewers.</td></tr>
+          <tr><th>Why crypto is necessary</th><td>Programmable wallets, onchain balances, and policy-enforced settlement are the product, not decoration.</td></tr>
+          <tr><th>Why not Web2</th><td>Stripe-style policy engines do not control open Solana assets or compose with wallets, token accounts, and onchain programs.</td></tr>
+          <tr><th>Kill this idea</th><td>If founders refuse autonomous spending entirely and keep every transaction manual, this collapses into a dashboard feature.</td></tr>
+          <tr><th>Bear case</th><td>Wallet infra vendors could absorb this as a feature. Survives because founders need a tighter agent-first opinionated layer than generic wallet APIs.</td></tr>
+          <tr><th>Scores</th><td>Founder fit 3, MVP speed 2, distribution clarity 2, market pull 2, revenue path 2.</td></tr>
+          <tr><th>Direct competitors</th><td>Proco, Crossmint wallet infrastructure, generic programmable wallet vendors.</td></tr>
+          <tr><th>Adjacent substitutes</th><td>Manual multisig approvals, spreadsheet budgets, Turnkey-style backend wallet controls, internal scripts.</td></tr>
+          <tr><th>OSS landscape</th><td>Solana Agent Kit and assetCLI prove builders want agents to transact, but they do not center spend policy and safety as the core wedge.</td></tr>
+        </table>
+      </article>
+
+      <article class="idea">
+        <div class="rank">Rank #2</div>
+        <h3>x402 for Solana MCP Servers</h3>
+        <p>
+          A drop-in billing layer that lets founders charge agent tools, MCP servers, and APIs in
+          USDC on Solana per request, per session, or per workflow without wiring Stripe,
+          subscriptions, or manual invoicing.
+        </p>
+        <table class="score-table">
+          <tr><th>Why it survives</th><td>Machine-to-machine payments are a legitimate crypto wedge and the monetization story is cleaner than most agent products.</td></tr>
+          <tr><th>Why crypto is necessary</th><td>Open wallet-based settlement and micropayments between software actors are the core value, especially across untrusted counterparties.</td></tr>
+          <tr><th>Why it lost</th><td>The market is heating up fast and standards may compress differentiation before you get distribution.</td></tr>
+          <tr><th>Kill this idea</th><td>If buyers just want card billing or monthly SaaS invoices, the crypto layer becomes optional and the wedge weakens.</td></tr>
+          <tr><th>Bear case</th><td>x402 becomes infrastructure and your product gets squeezed. Survives if you focus narrowly on Solana founders shipping MCP-based tools now.</td></tr>
+          <tr><th>Scores</th><td>Founder fit 2, MVP speed 2, distribution clarity 2, market pull 2, revenue path 3.</td></tr>
+          <tr><th>Direct competitors</th><td>FourOhTwo, AION SDK, any wallet-native agent payment rail.</td></tr>
+          <tr><th>Adjacent substitutes</th><td>Stripe subscriptions, API keys with prepaid credits, manual invoicing, enterprise procurement.</td></tr>
+          <tr><th>OSS landscape</th><td>Emerging payment standards and Solana agent tooling reduce build time, but there is room for a founder-focused implementation layer.</td></tr>
+        </table>
+      </article>
+
+      <article class="idea">
+        <div class="rank">Rank #3</div>
+        <h3>Onchain Agent Receipts and Reputation</h3>
+        <p>
+          Issue verifiable receipts for agent actions, tool calls, and task completion on Solana so
+          founders can audit what agents did, prove service quality, and eventually route work by
+          agent reputation.
+        </p>
+        <table class="score-table">
+          <tr><th>Why it survives</th><td>It is a real cross-app coordination primitive and fits the broader agent economy thesis.</td></tr>
+          <tr><th>Why crypto is necessary</th><td>Portable identity, verifiable state, and shared reputation across parties are much stronger on an open ledger than in siloed logs.</td></tr>
+          <tr><th>Why it lost</th><td>Pain is less urgent than wallet safety or billing, and founders shipping MVPs do not yet wake up desperate for agent reputation graphs.</td></tr>
+          <tr><th>Kill this idea</th><td>If nobody outside your app reads or trusts the receipts, you are just writing expensive logs.</td></tr>
+          <tr><th>Bear case</th><td>Too early and too abstract for first buyers. Survives because a narrow receipt layer for payouts or contractor agents could still land.</td></tr>
+          <tr><th>Scores</th><td>Founder fit 2, MVP speed 2, distribution clarity 1, market pull 1, revenue path 1.</td></tr>
+          <tr><th>Direct competitors</th><td>SAID Protocol, ERC-8004-style onchain agent identity projects.</td></tr>
+          <tr><th>Adjacent substitutes</th><td>Signed webhooks, app logs, internal audit trails, centralized reputation systems.</td></tr>
+          <tr><th>OSS landscape</th><td>Identity registries exist, but a Solana-native receipts layer tied to practical founder workflows is still less defined.</td></tr>
+        </table>
+      </article>
+
+      <section class="panel">
+        <h2>Why the winner beats the other two</h2>
+        <ul>
+          <li>It addresses a pain founders feel before scale: agents touching treasury is scary immediately.</li>
+          <li>It is integration-first. You can build a credible MVP on top of existing wallet and Solana agent tooling instead of inventing a new protocol.</li>
+          <li>It has a simple demo path for the grant: create policy, run agent action, block bad transfer, approve safe one.</li>
+          <li>It naturally leads to paid expansion: per wallet, per policy, or team plan.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>2-week MVP shape for the winner</h2>
+        <div class="grid">
+          <div>
+            <h3>Week 1</h3>
+            <ul>
+              <li>Create agent wallet and budget policy.</li>
+              <li>Support allowlist and per-tx spend cap in USDC or SOL.</li>
+              <li>Simulate transfers and swaps before execution.</li>
+              <li>Expose one API and one simple founder dashboard.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Week 2</h3>
+            <ul>
+              <li>Add human approval fallback for risky actions.</li>
+              <li>Show action history and blocked attempts.</li>
+              <li>Integrate one agent framework or MCP server example.</li>
+              <li>Publish demo video and starter repo.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Suggested one-line grant pitch</h2>
+        <p>
+          Agent Treasury Guard lets founders ship Solana-native AI agents faster by giving each
+          agent a programmable wallet with spend caps, allowlists, and human fail-safes instead of
+          raw private keys.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Source notes</h2>
+        <ul>
+          <li>Local pattern libraries: <code>web3-ideas-combined.json</code> and <code>superteam-ideas.json</code> from the installed Superstack datasets.</li>
+          <li><a href="https://github.com/sendaifun/solana-agent-kit-py">Solana Agent Kit</a> for OSS proof that builders already want agents to take Solana actions.</li>
+          <li><a href="https://github.com/assetCLI/assetCLI-init">assetCLI</a> for evidence of active Solana agent operations tooling.</li>
+          <li><a href="https://www.crossmint.com/">Crossmint</a> and <a href="https://procohq.com/resources/">Proco</a> for programmable wallet and agent-wallet market direction.</li>
+          <li><a href="https://www.fourohtwo.io/">FourOhTwo</a> and <a href="https://www.aionworld.cloud/sdk">AION SDK</a> for agent payments competition.</li>
+          <li><a href="https://www.saidprotocol.com/">SAID Protocol</a> and <a href="https://erc8004.agency/">ERC-8004</a> for the identity and reputation landscape.</li>
+          <li><a href="https://superteam.fun/earn/grants/agentic-engineering">Superteam Agentic Engineering Grant</a> for program context.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>x402 for Solana MCP Servers - Deep Dive</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --surface: #f7f6f3;
+        --surface-2: #efeeea;
+        --border: #e9e9e7;
+        --text: #37352f;
+        --muted: #787774;
+        --accent: #2eaadc;
+        --radius: 10px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+      .page {
+        width: min(980px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 40px 0 72px;
+      }
+      h1, h2, h3 { margin: 0 0 12px; line-height: 1.2; }
+      h1 { font-size: 2.3rem; margin-bottom: 6px; }
+      .muted { color: var(--muted); }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        margin-top: 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+      }
+      .pill {
+        display: inline-block;
+        font-size: 12px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #eef8fc;
+        color: #126782;
+        margin-right: 6px;
+        margin-bottom: 6px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      th, td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 10px;
+        border-top: 1px solid var(--border);
+      }
+      ul { margin: 10px 0 0 20px; padding: 0; }
+      code {
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 6px;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <div class="muted">Deep Dive • Theme: Notion • Generated: 2026-04-14 12:55:51 UTC</div>
+        <h1>x402 for Solana MCP Servers</h1>
+        <p class="muted">
+          Chosen idea for an infra-focused builder targeting founders shipping agent MVPs in 1-2 weeks.
+        </p>
+      </header>
+
+      <section class="panel">
+        <h2>One-liner</h2>
+        <p>
+          A wallet-native payment gateway that lets MCP server operators charge for tool calls in
+          Solana USDC and only execute the tool after payment verification.
+        </p>
+        <div>
+          <span class="pill">Devnet-first MVP</span>
+          <span class="pill">USDC only</span>
+          <span class="pill">MCP wrapper</span>
+          <span class="pill">Operator dashboard</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Why this idea still survives</h2>
+        <table>
+          <tr><th>Why crypto is necessary</th><td>Wallet-based settlement between users, agents, and tool operators is core to the product. This is not a token add-on.</td></tr>
+          <tr><th>Why not Web2</th><td>Stripe can bill monthly SaaS well, but not open, wallet-native, machine-to-machine access to Solana tools with onchain settlement.</td></tr>
+          <tr><th>Main risk</th><td>The standard and facilitator market are moving fast. Differentiate with a tight Solana MCP wrapper instead of broad payment infra claims.</td></tr>
+          <tr><th>Fastest wedge</th><td>Wrap an existing MCP server and make one paid tool work on devnet with receipts and retry flow.</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>What you actually need to build</h2>
+        <div class="grid">
+          <div>
+            <h3>Core backend</h3>
+            <ul>
+              <li>MCP gateway that intercepts tool calls</li>
+              <li>pricing engine per tool</li>
+              <li>payment challenge generator</li>
+              <li>payment verifier for Solana devnet USDC</li>
+              <li>receipt and request store</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Operator layer</h3>
+            <ul>
+              <li>server registration</li>
+              <li>tool pricing config</li>
+              <li>seller wallet config</li>
+              <li>revenue and receipt view</li>
+              <li>failed payment logs</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Developer experience</h3>
+            <ul>
+              <li>Node middleware package</li>
+              <li>example seller MCP server</li>
+              <li>example buyer client</li>
+              <li>local setup guide</li>
+              <li>demo script and sample requests</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Recommended stack</h2>
+        <table>
+          <tr><th>Gateway</th><td>TypeScript, Node.js, Fastify or Hono</td></tr>
+          <tr><th>MCP layer</th><td>Node MCP SDK with wrapper middleware</td></tr>
+          <tr><th>Frontend</th><td>Next.js for the operator dashboard</td></tr>
+          <tr><th>Database</th><td>Postgres with Prisma or Drizzle</td></tr>
+          <tr><th>Chain tools</th><td><code>@solana/web3.js</code> and SPL token helpers</td></tr>
+          <tr><th>Network</th><td>Solana devnet first, production abstraction later</td></tr>
+          <tr><th>RPC</th><td>Helius or QuickNode</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>2-week MVP checklist</h2>
+        <div class="grid">
+          <div>
+            <h3>Week 1</h3>
+            <ul>
+              <li>Scaffold the gateway and database.</li>
+              <li>Add server and tool pricing models.</li>
+              <li>Return <code>402 Payment Required</code> for paid tools.</li>
+              <li>Implement Solana devnet payment verification.</li>
+              <li>Wrap one example MCP tool.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Week 2</h3>
+            <ul>
+              <li>Add dashboard for tools, prices, and receipts.</li>
+              <li>Add replay protection and rate limits.</li>
+              <li>Ship sample client and docs.</li>
+              <li>Run external founder demos.</li>
+              <li>Record a short walkthrough for the grant.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>First ten users</h2>
+        <ul>
+          <li>Founders already exposing MCP tools privately and charging manually.</li>
+          <li>Builders shipping agent dashboards with premium or metered tools.</li>
+          <li>Solana-native infra teams experimenting with paid agent APIs.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Go-to-market wedge</h2>
+        <table>
+          <tr><th>Wedge</th><td>“Wrap your existing MCP server and start charging for one premium tool in under 30 minutes.”</td></tr>
+          <tr><th>Distribution</th><td>Direct outreach to founders, dev rel demos, GitHub template, and short X demo clips.</td></tr>
+          <tr><th>Message angle</th><td>“Stop hacking Stripe around tool calls. Add wallet-native billing to your MCP server.”</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>7-day validation sprint</h2>
+        <ul>
+          <li><strong>Day 1:</strong> list 20 founders shipping MCP or agent tools.</li>
+          <li><strong>Day 2:</strong> send a mock flow and ask whether they would rather paywall a tool call than gate by API key.</li>
+          <li><strong>Day 3:</strong> demo challenge -> pay -> execute flow on devnet.</li>
+          <li><strong>Day 4:</strong> measure where the integration breaks.</li>
+          <li><strong>Day 5:</strong> narrow to one buyer segment if feedback splits.</li>
+          <li><strong>Day 6:</strong> ship starter template and docs.</li>
+          <li><strong>Day 7:</strong> collect two public or private founder testimonials.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Top risks and mitigations</h2>
+        <table>
+          <tr><th>Risk</th><th>Mitigation</th></tr>
+          <tr><td>Payment standard changes quickly</td><td>Use a facilitator adapter interface and avoid deep coupling to one provider.</td></tr>
+          <tr><td>Founders prefer Stripe</td><td>Target wallet-native and Solana-native builders first, not general SaaS billing.</td></tr>
+          <tr><td>Verification edge cases</td><td>Stay on one token, one chain, and one request model for MVP.</td></tr>
+          <tr><td>Weak differentiation</td><td>Own the MCP-specific wrapper experience rather than broad payment infra.</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Source notes</h2>
+        <ul>
+          <li><a href="https://docs.cdp.coinbase.com/x402/overview">Coinbase x402 overview</a></li>
+          <li><a href="https://docs.cdp.coinbase.com/x402/quickstart">Coinbase x402 quickstart</a></li>
+          <li><a href="https://www.fourohtwo.io/">FourOhTwo</a></li>
+          <li><a href="https://modelcontextprotocol.info/docs/">MCP docs</a></li>
+          <li><a href="https://github.com/sendaifun/solana-agent-kit-py">Solana Agent Kit</a></li>
+          <li><a href="https://www.aionworld.cloud/sdk">AION SDK</a></li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
