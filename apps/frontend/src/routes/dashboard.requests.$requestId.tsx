@@ -85,7 +85,7 @@ function RequestDetail() {
                         : ev.status === "executed"
                           ? "bg-status-success"
                           : ev.status === "paid"
-                            ? "bg-status-pending"
+                            ? "bg-status-paid"
                             : "bg-status-info",
                     )}
                   />

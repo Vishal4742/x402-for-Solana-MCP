@@ -28,7 +28,7 @@ const (
 	defaultServerName       = "agent-tools-prod"
 	defaultPaymentScheme    = "x402.sol.usdc.v1"
 	defaultServerAPIKey     = "x402_sk_dev_local"
-	requestStatusChallenged = "challenged"
+	requestStatusChallenged = "pending"
 	requestStatusVerified   = "verified"
 	requestStatusExecuted   = "executed"
 	requestStatusFailed     = "failed"

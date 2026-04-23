@@ -41,7 +41,7 @@
   --color-ring: var(--ring);
 
   --color-status-success: var(--status-success);
-  --color-status-pending: var(--status-pending);
+  --color-status-paid: var(--status-paid);
   --color-status-warning: var(--status-warning);
   --color-status-fail: var(--status-fail);
   --color-status-info: var(--status-info);
@@ -84,7 +84,7 @@
 
   /* Status accents — restrained */
   --status-success: oklch(0.86 0.13 158); /* #7CE7B2 */
-  --status-pending: oklch(0.85 0.1 85); /* #E8C97A */
+  --status-paid: oklch(0.85 0.1 85); /* #E8C97A */
   --status-warning: oklch(0.78 0.13 55); /* #E8A87A */
   --status-fail: oklch(0.7 0.21 22); /* #FF6B6B */
   --status-info: oklch(0.78 0.06 230);
@@ -253,6 +253,25 @@
       linear-gradient(to right, var(--color-hairline) 1px, transparent 1px),
       linear-gradient(to bottom, var(--color-hairline) 1px, transparent 1px);
     background-size: 80px 80px;
+  }
+
+  .hero-terminal {
+    border: 1px solid var(--color-hairline);
+    background:
+      linear-gradient(180deg, oklch(1 0 0 / 0.06), transparent 42%),
+      oklch(0.075 0 0 / 0.86);
+    box-shadow: 0 24px 80px oklch(0 0 0 / 0.42);
+    backdrop-filter: blur(14px);
+  }
+
+  .hero-reference-overlay {
+    background: linear-gradient(
+      180deg,
+      oklch(0.08 0 0 / 0.28),
+      oklch(0.08 0 0 / 0.18) 48%,
+      oklch(0.08 0 0 / 0.82)
+    );
+    pointer-events: none;
   }
 
   .focus-ring:focus-visible {

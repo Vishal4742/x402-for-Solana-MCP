@@ -81,6 +81,11 @@ Phase 1 gateway core is implemented:
 - challenge lookup by request id
 - deterministic retry using `X-Payment-Request-Id`
 
+Current contract notes:
+
+- challenge lookup uses status `pending`
+- the current gateway runtime depends on Postgres and Redis for startup, even when running the basic Phase 1 challenge demo
+
 Acceptance runbook:
 
 - [docs/PHASE1-GATEWAY.md](/mnt/c/Users/vg890/OneDrive/Desktop/x402%20for%20Solana%20MCP/docs/PHASE1-GATEWAY.md:1)

@@ -3,7 +3,7 @@ import type { RequestStatus } from "@/lib/mock/types";
 
 const styles: Record<RequestStatus | "info", { dot: string; text: string; label: string }> = {
   challenged: { dot: "bg-status-info", text: "text-status-info", label: "Challenged" },
-  paid: { dot: "bg-status-pending", text: "text-status-pending", label: "Paid" },
+  paid: { dot: "bg-status-paid", text: "text-status-paid", label: "Paid" },
   verified: { dot: "bg-status-info", text: "text-status-info", label: "Verified" },
   executed: { dot: "bg-status-success", text: "text-status-success", label: "Executed" },
   failed: { dot: "bg-status-fail", text: "text-status-fail", label: "Failed" },
@@ -11,7 +11,7 @@ const styles: Record<RequestStatus | "info", { dot: string; text: string; label:
 };
 
 export function StatusBadge({ status, className }: { status: RequestStatus; className?: string }) {
-  const s = styles[status];
+  const s = styles[status] ?? styles.info;
   return (
     <span
       className={cn(

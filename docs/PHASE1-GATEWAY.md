@@ -13,7 +13,15 @@ Prove:
 ## Prerequisites
 
 - Go installed locally
+- Docker Desktop running locally
 - `.env` created from `.env.example`
+- `SELLER_WALLET` set in `.env`
+
+Start infrastructure:
+
+```bash
+docker compose up -d
+```
 
 Start the gateway:
 
@@ -101,4 +109,5 @@ Expected:
 
 - Pricing is configured via `TOOL_PRICING_JSON`
 - Unlisted tools are free unless `DEFAULT_TOOL_PRICE_ATOMIC` is set
-- This phase intentionally uses in-memory state only
+- The current gateway boot path requires Postgres and Redis even for the Phase 1 challenge demo
+- `POST /v1/verify` is available for the mocked settle-and-retry loop, but real Solana inspection remains a later phase concern

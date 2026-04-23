@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { DitherCanvas } from "@/components/DitherCanvas";
+import { EtherBackgroundCanvas } from "@/components/EtherBackgroundCanvas";
 import { Pill, MicroLabel, HairlineDivider } from "@/components/Editorial";
 import { CodeBlock } from "@/components/CodeBlock";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -31,28 +31,29 @@ export function LandingHeader() {
 
 export function Hero() {
   return (
-    <section className="relative min-h-[100svh] hairline-b overflow-hidden">
-      <DitherCanvas className="absolute inset-0 h-full w-full" />
-      <div className="absolute inset-0 scanlines pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background" />
+    <section className="relative min-h-[92svh] hairline-b overflow-hidden">
+      <EtherBackgroundCanvas className="absolute inset-0 h-full w-full" />
+      <div className="hero-reference-overlay absolute inset-0" />
 
-      <div className="relative container-editorial pt-32 pb-16 min-h-[100svh] flex flex-col">
-        <MicroLabel number="001">Protocol · Solana Devnet</MicroLabel>
+      <div className="relative container-editorial pt-24 pb-10 min-h-[92svh] flex flex-col">
+        <MicroLabel number="001">x402/sol · Solana Devnet</MicroLabel>
 
-        <div className="mt-auto">
-          <h1 className="display-xl">
-            CHARGE PER
-            <br />
-            <span className="text-foreground/60">TOOL CALL.</span>
-          </h1>
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
-            <p className="md:col-span-5 text-lg text-foreground/80 leading-relaxed">
-              Wallet-native USDC billing for MCP servers.
-              <span className="text-muted-foreground"> 402 in. Receipt out.</span>
+        <div className="mt-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-end">
+          <div className="lg:col-span-7">
+            <div className="inline-flex items-center gap-2 hairline px-3 py-2 font-mono text-[0.68rem] uppercase text-foreground/70">
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
+              Devnet live · x402.sol.usdc.v1
+            </div>
+            <h1 className="display-xl mt-8 max-w-[9ch]">
+              PAID MCP
               <br />
-              Wrap an existing server, price each tool, settle on Solana.
+              <span className="text-foreground/58">TOOL CALLS.</span>
+            </h1>
+            <p className="mt-8 max-w-2xl text-base sm:text-lg text-foreground/80 leading-relaxed">
+              x402/sol wraps your MCP server with wallet-native USDC billing: return a 402
+              challenge, verify the Solana transfer, then execute with a signed receipt.
             </p>
-            <div className="md:col-span-4 md:col-start-9 flex flex-wrap gap-3 md:justify-end">
+            <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/dashboard" className="pill pill-solid">
                 Launch Dashboard ⊕
               </Link>
@@ -61,14 +62,44 @@ export function Hero() {
               </a>
             </div>
           </div>
+
+          <div className="lg:col-span-5">
+            <div className="hero-terminal">
+              <div className="flex items-center justify-between hairline-b px-4 py-3 font-mono text-[0.68rem] uppercase text-muted-foreground">
+                <span>Live payment scheme</span>
+                <span>x402.sol.usdc.v1</span>
+              </div>
+              <div className="grid grid-cols-[auto_1fr_auto] gap-x-4 gap-y-5 p-5 font-mono text-xs">
+                {[
+                  { n: "01", label: "402 challenge issued", time: "0ms" },
+                  { n: "02", label: "Wallet signs USDC transfer", time: "187ms" },
+                  { n: "03", label: "Verifier confirms signature", time: "421ms" },
+                  { n: "04", label: "MCP tool executes", time: "482ms" },
+                ].map((step) => (
+                  <div key={step.n} className="contents">
+                    <span className="text-muted-foreground">{step.n}</span>
+                    <span className="text-foreground/82">{step.label}</span>
+                    <span className="text-status-success">{step.time}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="hairline-t p-5">
+                <pre className="overflow-hidden text-[0.7rem] leading-relaxed text-foreground/68">{`receipt {
+  amount: "0.005 USDC"
+  network: "solana:devnet"
+  status: "executed"
+}`}</pre>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-16 hairline-t pt-4 grid grid-cols-3 gap-4 font-mono text-[0.7rem] text-muted-foreground">
+        <div className="mt-12 hairline-t pt-4 grid grid-cols-2 sm:grid-cols-3 gap-4 font-mono text-[0.7rem] text-muted-foreground">
           <div>
-            STATUS — <span className="text-status-success">● devnet live</span>
+            STATUS — <span className="text-status-success">● gateway online</span>
           </div>
           <div className="hidden sm:block text-center">SCHEME — x402.sol.usdc.v1</div>
-          <div className="text-right">BUILD — 2025.04.19</div>
+          <div className="text-right">BUILD — 2026.04.22</div>
         </div>
       </div>
     </section>
