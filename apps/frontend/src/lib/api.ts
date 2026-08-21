@@ -28,6 +28,8 @@ const USE_MOCK_FALLBACK = import.meta.env.VITE_USE_MOCK_FALLBACK !== "false";
 export const backendRoutes = {
   servers: "/v1/servers",
   serverTools: (serverId: string) => `/v1/servers/${serverId}/tools`,
+  serverTool: (serverId: string, toolName: string) =>
+    `/v1/servers/${serverId}/tools/${encodeURIComponent(toolName)}`,
   requests: "/v1/requests",
   request: (requestId: string) => `/v1/requests/${requestId}`,
   invokeMcp: (serverId: string) => `/mcp/${serverId}`,
@@ -256,6 +258,19 @@ export const api = {
         return summary;
       },
     );
+  },
+  // Operator write. Only hits the backend when a live API is configured; in
+  // mock mode the caller keeps its optimistic local state (nothing to persist).
+  async updateTool(
+    serverId: string,
+    toolName: string,
+    patch: { priceUsdc?: number; enabled?: boolean },
+  ): Promise<void> {
+    if (!liveApiEnabled()) return;
+    await fetchJson<ToolPricing>(backendRoutes.serverTool(serverId, toolName), {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
   },
   async invokeTool(serverId: string, payload: InvokeMcpToolInput) {
     return fetchJson<Record<string, unknown> | PaymentRequiredResponse>(

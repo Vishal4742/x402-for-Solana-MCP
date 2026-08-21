@@ -71,7 +71,8 @@
   --secondary: oklch(0.16 0 0);
   --secondary-foreground: oklch(0.97 0 0);
   --muted: oklch(0.13 0 0);
-  --muted-foreground: oklch(0.58 0 0);
+  /* 0.63 keeps muted text clearly de-emphasized while clearing WCAG AA (~4.8:1) on the near-black base. */
+  --muted-foreground: oklch(0.63 0 0);
   --accent: oklch(0.16 0 0);
   --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.65 0.2 25);
@@ -216,9 +217,21 @@
     font-size: 0.8rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    transition: all 0.2s ease;
     background: transparent;
     color: var(--color-foreground);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pill {
+      transition:
+        background-color 0.15s ease-out,
+        color 0.15s ease-out,
+        border-color 0.15s ease-out,
+        transform 0.1s ease-out;
+    }
+    .pill:active {
+      transform: translateY(1px);
+    }
   }
 
   .pill:hover {
@@ -265,17 +278,101 @@
   }
 
   .hero-reference-overlay {
-    background: linear-gradient(
-      180deg,
-      oklch(0.08 0 0 / 0.28),
-      oklch(0.08 0 0 / 0.18) 48%,
-      oklch(0.08 0 0 / 0.82)
-    );
+    /*
+     * The canvas behind this is a bright sunset (near-white horizon + orange band)
+     * that lands right where the hero text sits. Two layered scrims: a left-weighted
+     * horizontal one so the text column always has a dark backing, and a bottom-weighted
+     * vertical one for the copy zone — the sunset stays visible top-right behind the
+     * terminal panel. Keeps AA contrast on the headline and body without flattening the art.
+     */
+    background:
+      linear-gradient(
+        90deg,
+        oklch(0.07 0 0 / 0.72) 0%,
+        oklch(0.07 0 0 / 0.5) 38%,
+        oklch(0.07 0 0 / 0.15) 66%,
+        transparent 82%
+      ),
+      linear-gradient(
+        180deg,
+        oklch(0.07 0 0 / 0.42) 0%,
+        oklch(0.07 0 0 / 0.28) 30%,
+        oklch(0.07 0 0 / 0.62) 60%,
+        oklch(0.07 0 0 / 0.92) 100%
+      );
     pointer-events: none;
   }
 
   .focus-ring:focus-visible {
     outline: 1px solid var(--color-foreground);
     outline-offset: 2px;
+  }
+
+  /*
+   * Motion system. One entrance curve (ease-out), one duration tier for reveals.
+   * Everything is gated on prefers-reduced-motion, and scroll reveals only hide
+   * content once JS is confirmed (.js on <html>) so no-JS users never lose it.
+   */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* Mount entrance — above-the-fold only (hero). Runs once on load. */
+    .animate-rise {
+      animation: rise 0.5s cubic-bezier(0, 0, 0.2, 1) both;
+    }
+    .delay-1 {
+      animation-delay: 0.06s;
+    }
+    .delay-2 {
+      animation-delay: 0.12s;
+    }
+    .delay-3 {
+      animation-delay: 0.18s;
+    }
+    .delay-4 {
+      animation-delay: 0.24s;
+    }
+
+    /* Scroll reveal — hidden only when JS is present; .is-in is added in view. */
+    .js .reveal {
+      opacity: 0;
+    }
+    .js .reveal.is-in {
+      animation: rise 0.5s cubic-bezier(0, 0, 0.2, 1) both;
+    }
+    .js .reveal-stagger.is-in > * {
+      animation: rise 0.5s cubic-bezier(0, 0, 0.2, 1) both;
+    }
+    .js .reveal-stagger.is-in > *:nth-child(2) {
+      animation-delay: 0.06s;
+    }
+    .js .reveal-stagger.is-in > *:nth-child(3) {
+      animation-delay: 0.12s;
+    }
+    .js .reveal-stagger.is-in > *:nth-child(4) {
+      animation-delay: 0.18s;
+    }
+  }
+
+  /* Hover lift for cards/rows — transform + border only, pointer devices only. */
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .hover-lift {
+      transition:
+        transform 0.15s cubic-bezier(0, 0, 0.2, 1),
+        border-color 0.15s ease-out,
+        background-color 0.15s ease-out;
+    }
+    .hover-lift:hover {
+      transform: translateY(-2px);
+    }
   }
 }

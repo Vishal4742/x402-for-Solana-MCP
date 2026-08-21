@@ -1,3 +1,4 @@
 packages:
   - "packages/*"
-
+  - "apps/example-server"
+  - "apps/example-client"

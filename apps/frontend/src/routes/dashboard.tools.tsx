@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { MicroLabel } from "@/components/Editorial";
 import { DetailDrawer } from "@/components/DetailDrawer";
 import { api, fmtUsdc } from "@/lib/api";
@@ -18,12 +19,24 @@ function ToolsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftPrice, setDraftPrice] = useState("");
 
-  const updatePrice = (id: string, price: number) => {
-    setTools((ts) => ts.map((t) => (t.id === id ? { ...t, priceUsdc: price } : t)));
+  // Optimistically apply the edit, persist it, and roll back if the gateway rejects it.
+  const persist = async (
+    tool: ToolPricing,
+    patch: { priceUsdc?: number; enabled?: boolean },
+  ) => {
+    const previous = tools;
+    setTools((ts) => ts.map((t) => (t.id === tool.id ? { ...t, ...patch } : t)));
+    try {
+      await api.updateTool(tool.serverId, tool.toolName, patch);
+    } catch (error) {
+      setTools(previous);
+      toast.error(`Could not update ${tool.toolName}`, {
+        description: error instanceof Error ? error.message : "request failed",
+      });
+    }
   };
-  const toggle = (id: string) => {
-    setTools((ts) => ts.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t)));
-  };
+  const updatePrice = (tool: ToolPricing, price: number) => persist(tool, { priceUsdc: price });
+  const toggle = (tool: ToolPricing) => persist(tool, { enabled: !tool.enabled });
 
   return (
     <div className="space-y-8">
@@ -60,7 +73,7 @@ function ToolsPage() {
           </thead>
           <tbody>
             {tools.map((t) => (
-              <tr key={t.id} className="hairline-b last:border-b-0 hover:bg-card/40">
+              <tr key={t.id} className="hairline-b last:border-b-0 hover:bg-card/50">
                 <td className="px-4 py-3 font-mono">{t.toolName}</td>
                 <td className="px-4 py-3 text-muted-foreground">{t.description}</td>
                 <td className="px-4 py-3 text-right font-mono">
@@ -69,7 +82,7 @@ function ToolsPage() {
                       onSubmit={(e) => {
                         e.preventDefault();
                         const v = parseFloat(draftPrice);
-                        if (!isNaN(v) && v >= 0) updatePrice(t.id, v);
+                        if (!isNaN(v) && v >= 0 && v !== t.priceUsdc) updatePrice(t, v);
                         setEditingId(null);
                       }}
                       className="inline-flex items-center gap-1"
@@ -89,7 +102,7 @@ function ToolsPage() {
                         setEditingId(t.id);
                         setDraftPrice(t.priceUsdc.toString());
                       }}
-                      className="hover:text-foreground text-foreground/85"
+                      className="hover:text-foreground text-foreground/80"
                     >
                       {t.priceUsdc === 0 ? (
                         <span className="text-muted-foreground">free</span>
@@ -104,7 +117,7 @@ function ToolsPage() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button
-                    onClick={() => toggle(t.id)}
+                    onClick={() => toggle(t)}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full hairline transition-colors ${
                       t.enabled ? "bg-foreground" : "bg-card"
                     }`}
@@ -169,7 +182,7 @@ function ToolsPage() {
             </div>
             <div>
               <div className="micro-label mb-2">— Endpoint</div>
-              <pre className="hairline bg-card/40 p-4 font-mono text-xs overflow-x-auto">
+              <pre className="hairline bg-card/50 p-4 font-mono text-xs overflow-x-auto">
                 {`POST /mcp/${selected.serverId}\n{ "tool": "${selected.toolName}" }`}
               </pre>
             </div>

@@ -4,7 +4,7 @@ export function JsonViewer({ data, className }: { data: unknown; className?: str
   return (
     <pre
       className={cn(
-        "hairline bg-card/40 p-4 text-xs font-mono text-foreground/80 overflow-x-auto leading-relaxed",
+        "hairline bg-card/50 p-4 text-xs font-mono text-foreground/80 overflow-x-auto leading-relaxed",
         className,
       )}
     >

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,8 @@ type store struct {
 	pool *pgxpool.Pool
 }
 
+var errToolNotFound = errors.New("tool not found")
+
 type paymentRequestRecord struct {
 	ID            string
 	ServerID      string
@@ -28,6 +31,7 @@ type paymentRequestRecord struct {
 	Recipient     string
 	Network       string
 	Scheme        string
+	Reference     string
 	Status        string
 	FailureReason *string
 	TxSignature   *string
@@ -84,15 +88,21 @@ type requestView struct {
 }
 
 type receiptView struct {
-	ID          string  `json:"id"`
-	RequestID   string  `json:"requestId"`
-	ServerID    string  `json:"serverId"`
-	ToolName    string  `json:"toolName"`
-	AmountUSDC  float64 `json:"amountUsdc"`
-	PayerWallet string  `json:"payerWallet"`
-	TxSignature string  `json:"txSignature"`
-	BlockTime   string  `json:"blockTime"`
-	CreatedAt   string  `json:"createdAt"`
+	ID           string  `json:"id"`
+	RequestID    string  `json:"requestId"`
+	ServerID     string  `json:"serverId"`
+	ToolName     string  `json:"toolName"`
+	AmountUSDC   float64 `json:"amountUsdc"`
+	PayerWallet  string  `json:"payerWallet"`
+	TxSignature  string  `json:"txSignature"`
+	BlockTime    string  `json:"blockTime"`
+	CreatedAt    string  `json:"createdAt"`
+	ResponseHash string  `json:"responseHash"`
+}
+
+type serverForwarding struct {
+	UpstreamURL string
+	APIKey      string
 }
 
 type dashboardSummaryView struct {
@@ -115,6 +125,7 @@ type createPaymentRequestInput struct {
 	Recipient    string
 	Network      string
 	Scheme       string
+	Reference    string
 	ExpiresAt    time.Time
 	RawRequest   any
 }
@@ -145,6 +156,7 @@ CREATE TABLE IF NOT EXISTS servers (
   webhook_url TEXT NOT NULL DEFAULT '',
   network TEXT NOT NULL,
   api_key TEXT NOT NULL,
+  upstream_url TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -169,6 +181,7 @@ CREATE TABLE IF NOT EXISTS payment_requests (
   recipient TEXT NOT NULL,
   network TEXT NOT NULL,
   scheme TEXT NOT NULL,
+  reference TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL,
   failure_reason TEXT,
   tx_signature TEXT,
@@ -198,8 +211,13 @@ CREATE TABLE IF NOT EXISTS receipts (
   payer_wallet TEXT NOT NULL,
   tx_signature TEXT NOT NULL,
   block_time TIMESTAMPTZ NOT NULL,
+  response_hash TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE servers ADD COLUMN IF NOT EXISTS upstream_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE receipts ADD COLUMN IF NOT EXISTS response_hash TEXT NOT NULL DEFAULT '';
+ALTER TABLE payment_requests ADD COLUMN IF NOT EXISTS reference TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_payment_requests_server_status ON payment_requests(server_id, status);
 CREATE INDEX IF NOT EXISTS idx_payment_requests_created_at ON payment_requests(created_at DESC);
@@ -214,15 +232,19 @@ CREATE INDEX IF NOT EXISTS idx_request_events_request_id_created_at ON request_e
 func (s *store) seedDefaults(ctx context.Context, cfg config) error {
 	endpoint := fmt.Sprintf("http://localhost:%s/mcp/%s", cfg.Port, cfg.ServerID)
 	_, err := s.pool.Exec(ctx, `
-INSERT INTO servers (id, name, endpoint, payout_wallet, webhook_url, network, api_key)
-VALUES ($1, $2, $3, $4, '', $5, $6)
+INSERT INTO servers (id, name, endpoint, payout_wallet, webhook_url, network, api_key, upstream_url)
+VALUES ($1, $2, $3, $4, '', $5, $6, $7)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   endpoint = EXCLUDED.endpoint,
   payout_wallet = EXCLUDED.payout_wallet,
   network = EXCLUDED.network,
-  api_key = EXCLUDED.api_key
-`, cfg.ServerID, cfg.ServerName, endpoint, cfg.SellerWallet, cfg.Network, defaultServerAPIKey)
+  api_key = EXCLUDED.api_key,
+  -- Keep a previously configured upstream if this boot didn't set one, so a
+  -- restart with UPSTREAM_MCP_URL unset can't silently turn paid tools back
+  -- into the stub response.
+  upstream_url = CASE WHEN EXCLUDED.upstream_url <> '' THEN EXCLUDED.upstream_url ELSE servers.upstream_url END
+`, cfg.ServerID, cfg.ServerName, endpoint, cfg.SellerWallet, cfg.Network, defaultServerAPIKey, cfg.UpstreamMCPURL)
 	if err != nil {
 		return err
 	}
@@ -241,9 +263,10 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO tool_pricing (id, server_id, tool_name, description, price_atomic, enabled)
 VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (server_id, tool_name) DO UPDATE SET
-  description = EXCLUDED.description,
-  price_atomic = EXCLUDED.price_atomic,
-  enabled = EXCLUDED.enabled
+  -- TOOL_PRICING_JSON seeds a tool once. After that the operator owns price and
+  -- enabled through the dashboard, so a restart must not clobber their edits; only
+  -- the description (cosmetic) is refreshed from config.
+  description = EXCLUDED.description
 `, toolID, cfg.ServerID, toolName, description, seed.PriceAtomic, enabled)
 		if err != nil {
 			return err
@@ -282,9 +305,9 @@ func (s *store) createPaymentRequest(ctx context.Context, input createPaymentReq
 	_, err = tx.Exec(ctx, `
 INSERT INTO payment_requests (
   id, server_id, tool_name, amount_atomic, token_mint, recipient, network, scheme,
-  status, expires_at, raw_request, raw_response
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '{}'::jsonb)
-`, input.ID, input.ServerID, input.ToolName, input.AmountAtomic, input.TokenMint, input.Recipient, input.Network, input.Scheme, requestStatusChallenged, input.ExpiresAt.UTC(), rawRequest)
+  reference, status, expires_at, raw_request, raw_response
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '{}'::jsonb)
+`, input.ID, input.ServerID, input.ToolName, input.AmountAtomic, input.TokenMint, input.Recipient, input.Network, input.Scheme, input.Reference, requestStatusChallenged, input.ExpiresAt.UTC(), rawRequest)
 	if err != nil {
 		return paymentRequestRecord{}, err
 	}
@@ -310,7 +333,7 @@ VALUES ($1, $2, $3, $4)
 func (s *store) getPaymentRequest(ctx context.Context, requestID string) (paymentRequestRecord, error) {
 	row := s.pool.QueryRow(ctx, `
 SELECT id, server_id, tool_name, payer_wallet, amount_atomic, token_mint, recipient, network,
-       scheme, status, failure_reason, tx_signature, created_at, expires_at, settled_at,
+       scheme, reference, status, failure_reason, tx_signature, created_at, expires_at, settled_at,
        raw_request, raw_response
 FROM payment_requests
 WHERE id = $1
@@ -329,6 +352,7 @@ WHERE id = $1
 		&record.Recipient,
 		&record.Network,
 		&record.Scheme,
+		&record.Reference,
 		&record.Status,
 		&record.FailureReason,
 		&record.TxSignature,
@@ -347,7 +371,20 @@ WHERE id = $1
 	return record, nil
 }
 
-func (s *store) markVerified(ctx context.Context, requestID, txSignature, clientWallet string, verifiedAt time.Time) error {
+func (s *store) getServerForwarding(ctx context.Context, serverID string) (serverForwarding, error) {
+	var fw serverForwarding
+	err := s.pool.QueryRow(ctx, `
+SELECT upstream_url, api_key
+FROM servers
+WHERE id = $1
+`, serverID).Scan(&fw.UpstreamURL, &fw.APIKey)
+	if err != nil {
+		return serverForwarding{}, err
+	}
+	return fw, nil
+}
+
+func (s *store) markVerified(ctx context.Context, requestID, txSignature, clientWallet string, verifiedAt time.Time, verifierMode string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -379,8 +416,11 @@ VALUES ($1, $2, $3, $4, $5)
 		return err
 	}
 
+	if strings.TrimSpace(verifierMode) == "" {
+		verifierMode = "mock"
+	}
 	verifiedPayload, _ := json.Marshal(map[string]any{
-		"rpc":           "mock",
+		"rpc":           verifierMode,
 		"confirmations": 1,
 	})
 	if _, err := tx.Exec(ctx, `
@@ -431,7 +471,7 @@ func (s *store) markExecuted(ctx context.Context, requestID string, rawResponse 
 	}
 	defer tx.Rollback(ctx)
 
-	record, err := s.getPaymentRequestTx(ctx, tx, requestID)
+	record, err := s.getPaymentRequestTx(ctx, tx, requestID, true)
 	if err != nil {
 		return err
 	}
@@ -443,13 +483,17 @@ func (s *store) markExecuted(ctx context.Context, requestID string, rawResponse 
 	}
 
 	rawResponseJSON, _ := json.Marshal(rawResponse)
-	if _, err := tx.Exec(ctx, `
+	commandTag, err := tx.Exec(ctx, `
 UPDATE payment_requests
 SET status = $2,
     raw_response = $3
-WHERE id = $1
-`, requestID, requestStatusExecuted, rawResponseJSON); err != nil {
+WHERE id = $1 AND status = $4
+`, requestID, requestStatusExecuted, rawResponseJSON, requestStatusVerified)
+	if err != nil {
 		return err
+	}
+	if commandTag.RowsAffected() != 1 {
+		return errors.New("request is not verified")
 	}
 
 	execPayload, _ := json.Marshal(map[string]any{
@@ -466,26 +510,30 @@ VALUES ($1, $2, $3, $4, $5)
 		return errors.New("verified request is missing payer wallet or transaction signature")
 	}
 
+	responseHash := fmt.Sprintf("%x", sha256.Sum256(rawResponseJSON))
 	receiptID := "rcpt_" + uuid.NewString()
 	if _, err := tx.Exec(ctx, `
-INSERT INTO receipts (id, request_id, server_id, tool_name, amount_atomic, payer_wallet, tx_signature, block_time)
-VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+INSERT INTO receipts (id, request_id, server_id, tool_name, amount_atomic, payer_wallet, tx_signature, block_time, response_hash)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
 ON CONFLICT (request_id) DO NOTHING
-`, receiptID, requestID, record.ServerID, record.ToolName, record.AmountAtomic, *record.PayerWallet, *record.TxSignature); err != nil {
+`, receiptID, requestID, record.ServerID, record.ToolName, record.AmountAtomic, *record.PayerWallet, *record.TxSignature, responseHash); err != nil {
 		return err
 	}
 
 	return tx.Commit(ctx)
 }
 
-func (s *store) getPaymentRequestTx(ctx context.Context, tx pgx.Tx, requestID string) (paymentRequestRecord, error) {
-	row := tx.QueryRow(ctx, `
+func (s *store) getPaymentRequestTx(ctx context.Context, tx pgx.Tx, requestID string, forUpdate bool) (paymentRequestRecord, error) {
+	query := `
 SELECT id, server_id, tool_name, payer_wallet, amount_atomic, token_mint, recipient, network,
-       scheme, status, failure_reason, tx_signature, created_at, expires_at, settled_at,
+       scheme, reference, status, failure_reason, tx_signature, created_at, expires_at, settled_at,
        raw_request, raw_response
 FROM payment_requests
-WHERE id = $1
-`, requestID)
+WHERE id = $1`
+	if forUpdate {
+		query += " FOR UPDATE"
+	}
+	row := tx.QueryRow(ctx, query, requestID)
 
 	var record paymentRequestRecord
 	var rawRequest []byte
@@ -500,6 +548,7 @@ WHERE id = $1
 		&record.Recipient,
 		&record.Network,
 		&record.Scheme,
+		&record.Reference,
 		&record.Status,
 		&record.FailureReason,
 		&record.TxSignature,
@@ -571,9 +620,33 @@ ORDER BY t.tool_name ASC
 	return result, rows.Err()
 }
 
+// updateToolPricing sets price and/or enabled for one tool; nil fields are left
+// untouched. The next challenge reads price_atomic straight from this row, so a
+// price change takes effect immediately with no cache to bust.
+func (s *store) updateToolPricing(ctx context.Context, serverID, toolName string, priceAtomic *int64, enabled *bool) (toolView, error) {
+	var item toolView
+	var storedAtomic int64
+	err := s.pool.QueryRow(ctx, `
+UPDATE tool_pricing
+SET price_atomic = COALESCE($3, price_atomic),
+    enabled = COALESCE($4, enabled)
+WHERE server_id = $1 AND tool_name = $2
+RETURNING id, server_id, tool_name, description, price_atomic, enabled
+`, serverID, toolName, priceAtomic, enabled).Scan(
+		&item.ID, &item.ServerID, &item.ToolName, &item.Description, &storedAtomic, &item.Enabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return toolView{}, errToolNotFound
+	}
+	if err != nil {
+		return toolView{}, err
+	}
+	item.PriceUSDC = atomicToUSDC(storedAtomic)
+	return item, nil
+}
+
 func (s *store) listRequests(ctx context.Context, serverID, status string) ([]requestView, error) {
 	query := `
-SELECT id, server_id, tool_name, payer_wallet, amount_atomic, status, failure_reason, tx_signature,
+SELECT id, server_id, tool_name, payer_wallet, amount_atomic, reference, status, failure_reason, tx_signature,
        created_at, settled_at, raw_request, raw_response
 FROM payment_requests
 WHERE 1=1`
@@ -623,7 +696,7 @@ func (s *store) getRequestView(ctx context.Context, requestID string) (requestVi
 
 func (s *store) listRequestEvents(ctx context.Context, requestID string) ([]requestEvent, error) {
 	rows, err := s.pool.Query(ctx, `
-SELECT status, payload, signature_hash, duration_ms, created_at
+SELECT status, payload, COALESCE(signature_hash, ''), duration_ms, created_at
 FROM request_events
 WHERE request_id = $1
 ORDER BY created_at ASC, id ASC
@@ -650,7 +723,7 @@ ORDER BY created_at ASC, id ASC
 
 func (s *store) listReceipts(ctx context.Context, serverID string) ([]receiptView, error) {
 	query := `
-SELECT id, request_id, server_id, tool_name, amount_atomic, payer_wallet, tx_signature, block_time, created_at
+SELECT id, request_id, server_id, tool_name, amount_atomic, payer_wallet, tx_signature, block_time, created_at, response_hash
 FROM receipts`
 	args := []any{}
 	if serverID != "" {
@@ -667,19 +740,38 @@ FROM receipts`
 
 	var result []receiptView
 	for rows.Next() {
-		var item receiptView
-		var amountAtomic int64
-		var blockTime time.Time
-		var createdAt time.Time
-		if err := rows.Scan(&item.ID, &item.RequestID, &item.ServerID, &item.ToolName, &amountAtomic, &item.PayerWallet, &item.TxSignature, &blockTime, &createdAt); err != nil {
+		item, err := scanReceiptRow(rows)
+		if err != nil {
 			return nil, err
 		}
-		item.AmountUSDC = atomicToUSDC(amountAtomic)
-		item.BlockTime = blockTime.UTC().Format(time.RFC3339)
-		item.CreatedAt = createdAt.UTC().Format(time.RFC3339)
 		result = append(result, item)
 	}
 	return result, rows.Err()
+}
+
+func (s *store) getReceiptByRequestID(ctx context.Context, requestID string) (receiptView, error) {
+	row := s.pool.QueryRow(ctx, `
+SELECT id, request_id, server_id, tool_name, amount_atomic, payer_wallet, tx_signature, block_time, created_at, response_hash
+FROM receipts
+WHERE request_id = $1
+`, requestID)
+	return scanReceiptRow(row)
+}
+
+func scanReceiptRow(scanner interface {
+	Scan(...any) error
+}) (receiptView, error) {
+	var item receiptView
+	var amountAtomic int64
+	var blockTime time.Time
+	var createdAt time.Time
+	if err := scanner.Scan(&item.ID, &item.RequestID, &item.ServerID, &item.ToolName, &amountAtomic, &item.PayerWallet, &item.TxSignature, &blockTime, &createdAt, &item.ResponseHash); err != nil {
+		return receiptView{}, err
+	}
+	item.AmountUSDC = atomicToUSDC(amountAtomic)
+	item.BlockTime = blockTime.UTC().Format(time.RFC3339)
+	item.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+	return item, nil
 }
 
 func (s *store) getDashboardSummary(ctx context.Context, serverID string) (dashboardSummaryView, error) {
@@ -741,6 +833,7 @@ func scanRequestRow(scanner interface {
 		&record.ToolName,
 		&record.PayerWallet,
 		&record.AmountAtomic,
+		&record.Reference,
 		&record.Status,
 		&record.FailureReason,
 		&record.TxSignature,

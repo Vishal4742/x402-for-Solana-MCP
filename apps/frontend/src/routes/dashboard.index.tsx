@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { KpiCard } from "@/components/KpiCard";
 import { MicroLabel } from "@/components/Editorial";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Reveal } from "@/components/Reveal";
 import { api, fmtRelative, fmtUsdc, truncate } from "@/lib/api";
 import { Link } from "@tanstack/react-router";
 
@@ -45,7 +46,7 @@ function Overview() {
       </div>
 
       {/* KPIs */}
-      <div className="hairline grid grid-cols-2 lg:grid-cols-4">
+      <Reveal as="div" stagger className="hairline grid grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Total revenue"
           value={summary.totalRevenueUsdc.toFixed(3)}
@@ -65,7 +66,7 @@ function Overview() {
           delta={{ value: -8.2, positive: false }}
         />
         <KpiCard label="Avg settlement" value={summary.avgSettlementMs.toString()} unit="ms" />
-      </div>
+      </Reveal>
 
       {/* Paid vs free */}
       <section>
@@ -172,7 +173,7 @@ function Overview() {
             .filter((t) => t.enabled)
             .slice(0, 6)
             .map((t) => (
-              <div key={t.id} className="bg-background p-5">
+              <div key={t.id} className="hover-lift relative bg-background p-5 hover:bg-card/50">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-sm">{t.toolName}</span>
                   {t.priceUsdc > 0 ? (

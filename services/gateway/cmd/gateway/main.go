@@ -50,6 +50,8 @@ type config struct {
 	PostgresURL        string
 	RedisURL           string
 	VerifierBaseURL    string
+	UpstreamMCPURL     string
+	DashboardOrigin    string
 	VerifyLockTTL      time.Duration
 	ServerID           string
 	ServerName         string
@@ -57,10 +59,11 @@ type config struct {
 }
 
 type app struct {
-	cfg        config
-	store      *store
-	redis      *redis.Client
-	httpClient *http.Client
+	cfg            config
+	store          *store
+	redis          *redis.Client
+	httpClient     *http.Client
+	upstreamClient *http.Client
 }
 
 type mcpRequest struct {
@@ -86,6 +89,7 @@ type verifierRequest struct {
 	ExpectedTokenMint    string `json:"expectedTokenMint"`
 	ExpectedAmountAtomic int64  `json:"expectedAmountAtomic"`
 	ExpectedNetwork      string `json:"expectedNetwork"`
+	ExpectedReference    string `json:"expectedReference,omitempty"`
 	ObservedRecipient    string `json:"observedRecipient,omitempty"`
 	ObservedTokenMint    string `json:"observedTokenMint,omitempty"`
 	ObservedAmountAtomic *int64 `json:"observedAmountAtomic,omitempty"`
@@ -100,6 +104,7 @@ type verifierResponse struct {
 	VerifiedAt     time.Time `json:"verifiedAt"`
 	FailureReason  string    `json:"failureReason,omitempty"`
 	FailureMessage string    `json:"failureMessage,omitempty"`
+	Mode           string    `json:"mode,omitempty"`
 }
 
 type challengeResponse struct {
@@ -119,6 +124,7 @@ type challengeView struct {
 	Recipient string     `json:"recipient"`
 	Network   string     `json:"network"`
 	Scheme    string     `json:"scheme"`
+	Reference string     `json:"reference"`
 	Status    string     `json:"status"`
 	CreatedAt time.Time  `json:"createdAt"`
 	ExpiresAt time.Time  `json:"expiresAt"`
@@ -132,6 +138,7 @@ type pricingMeta struct {
 	TokenMint    string `json:"tokenMint"`
 	Recipient    string `json:"recipient"`
 	Network      string `json:"network"`
+	Reference    string `json:"reference"`
 }
 
 type retryMeta struct {
@@ -145,7 +152,7 @@ type executionResponse struct {
 	Tool      string `json:"tool"`
 	Status    string `json:"status"`
 	RequestID string `json:"requestId,omitempty"`
-	Result    string `json:"result"`
+	Result    any    `json:"result"`
 }
 
 func main() {
@@ -180,25 +187,52 @@ func main() {
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		upstreamClient: &http.Client{
+			Timeout: 15 * time.Second,
+		},
 	}
 
-	router := chi.NewRouter()
-	router.Get("/healthz", app.handleHealth)
-	router.Post("/mcp/{serverID}", app.handleInvokeMCP)
-	router.Get("/v1/challenge/{requestID}", app.handleGetChallenge)
-	router.Post("/v1/verify", app.handleVerify)
-	router.Get("/v1/servers", app.handleGetServers)
-	router.Get("/v1/servers/{serverID}/tools", app.handleGetTools)
-	router.Get("/v1/requests", app.handleGetRequests)
-	router.Get("/v1/requests/{requestID}", app.handleGetRequest)
-	router.Get("/v1/dashboard/summary", app.handleGetDashboardSummary)
-	router.Get("/v1/dashboard/receipts", app.handleGetReceipts)
+	router := newRouterFor(app)
 
 	addr := ":" + cfg.Port
 	log.Printf("gateway listening on %s", addr)
 	if err := http.ListenAndServe(addr, router); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func newRouterFor(a *app) http.Handler {
+	router := chi.NewRouter()
+	router.Use(a.corsMiddleware)
+	router.Get("/healthz", a.handleHealth)
+	router.Post("/mcp/{serverID}", a.handleInvokeMCP)
+	router.Get("/v1/challenge/{requestID}", a.handleGetChallenge)
+	router.Post("/v1/verify", a.handleVerify)
+	router.Get("/v1/servers", a.handleGetServers)
+	router.Get("/v1/servers/{serverID}/tools", a.handleGetTools)
+	router.Patch("/v1/servers/{serverID}/tools/{toolName}", a.handleUpdateTool)
+	router.Get("/v1/requests", a.handleGetRequests)
+	router.Get("/v1/requests/{requestID}", a.handleGetRequest)
+	router.Get("/v1/receipts/{requestID}", a.handleGetReceipt)
+	router.Get("/v1/dashboard/summary", a.handleGetDashboardSummary)
+	router.Get("/v1/dashboard/receipts", a.handleGetReceipts)
+	return router
+}
+
+// corsMiddleware lets the operator dashboard (a separate origin) call the API from
+// the browser. DASHBOARD_ORIGIN pins it in production; it defaults to "*" for local dev.
+func (a *app) corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", a.cfg.DashboardOrigin)
+		w.Header().Set("Vary", "Origin")
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Payment-Request-Id")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (a *app) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -252,19 +286,78 @@ func (a *app) handleInvokeMCP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch record.Status {
-		case requestStatusVerified, requestStatusExecuted:
+		case requestStatusExecuted:
+			writeJSON(w, http.StatusOK, executionResponse{
+				ServerID:  serverID,
+				Tool:      req.Tool,
+				Status:    "executed",
+				RequestID: requestID,
+				Result:    record.RawResponse,
+			})
+			return
+		case requestStatusVerified:
+			// Serialize execution so concurrent retries make at most one upstream call.
+			lockKey := fmt.Sprintf("execute-lock:%s", record.ID)
+			acquired, err := a.redis.SetNX(ctx, lockKey, "1", a.cfg.VerifyLockTTL).Result()
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
+			if !acquired {
+				writeJSON(w, http.StatusConflict, map[string]string{"error": "execution already in progress"})
+				return
+			}
+			defer a.redis.Del(context.Background(), lockKey)
+
+			// Re-read under the lock: a concurrent retry may have executed already.
+			record, err = a.store.getPaymentRequest(ctx, record.ID)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
 			if record.Status == requestStatusExecuted {
 				writeJSON(w, http.StatusOK, executionResponse{
 					ServerID:  serverID,
 					Tool:      req.Tool,
 					Status:    "executed",
 					RequestID: requestID,
-					Result:    "paid tool executed after settlement",
+					Result:    record.RawResponse,
 				})
 				return
 			}
 
-			result := map[string]any{"result": "paid tool executed after settlement"}
+			forwarding, err := a.store.getServerForwarding(ctx, serverID)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+				return
+			}
+			if forwarding.UpstreamURL == "" {
+				result := map[string]any{"result": "paid tool executed after settlement"}
+				if err := a.store.markExecuted(ctx, record.ID, result); err != nil {
+					writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+					return
+				}
+				writeJSON(w, http.StatusOK, executionResponse{
+					ServerID:  serverID,
+					Tool:      req.Tool,
+					Status:    "executed",
+					RequestID: requestID,
+					Result:    result,
+				})
+				return
+			}
+
+			// Forward the original persisted request so what was paid for is what executes.
+			result, err := a.forwardToUpstream(ctx, forwarding, serverID, record.ID, record.RawRequest)
+			if err != nil {
+				// Leave the request verified so the client can retry execution safely.
+				writeJSON(w, http.StatusBadGateway, map[string]string{
+					"error":     "upstream_error",
+					"message":   err.Error(),
+					"requestId": record.ID,
+				})
+				return
+			}
 			if err := a.store.markExecuted(ctx, record.ID, result); err != nil {
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 				return
@@ -274,7 +367,7 @@ func (a *app) handleInvokeMCP(w http.ResponseWriter, r *http.Request) {
 				Tool:      req.Tool,
 				Status:    "executed",
 				RequestID: requestID,
-				Result:    "paid tool executed after settlement",
+				Result:    result,
 			})
 			return
 		case requestStatusChallenged:
@@ -300,15 +393,39 @@ func (a *app) handleInvokeMCP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tool.PriceAtomic == 0 {
+		forwarding, err := a.store.getServerForwarding(ctx, serverID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if forwarding.UpstreamURL == "" {
+			writeJSON(w, http.StatusOK, executionResponse{
+				ServerID: serverID,
+				Tool:     req.Tool,
+				Status:   "executed",
+				Result:   "free tool executed",
+			})
+			return
+		}
+		result, err := a.forwardToUpstream(ctx, forwarding, serverID, "", map[string]any{"tool": req.Tool, "input": req.Input})
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "upstream_error", "message": err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusOK, executionResponse{
 			ServerID: serverID,
 			Tool:     req.Tool,
 			Status:   "executed",
-			Result:   "free tool executed",
+			Result:   result,
 		})
 		return
 	}
 
+	reference, err := newPaymentReference()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
 	record, err := a.store.createPaymentRequest(ctx, createPaymentRequestInput{
 		ID:           uuid.NewString(),
 		ServerID:     serverID,
@@ -318,6 +435,7 @@ func (a *app) handleInvokeMCP(w http.ResponseWriter, r *http.Request) {
 		Recipient:    a.cfg.SellerWallet,
 		Network:      a.cfg.Network,
 		Scheme:       defaultPaymentScheme,
+		Reference:    reference,
 		ExpiresAt:    time.Now().UTC().Add(a.cfg.ChallengeTTL),
 		RawRequest:   req,
 	})
@@ -392,6 +510,7 @@ func (a *app) handleVerify(w http.ResponseWriter, r *http.Request) {
 		ExpectedTokenMint:    record.TokenMint,
 		ExpectedAmountAtomic: record.AmountAtomic,
 		ExpectedNetwork:      record.Network,
+		ExpectedReference:    record.Reference,
 		ObservedRecipient:    req.Recipient,
 		ObservedTokenMint:    req.TokenMint,
 		ObservedAmountAtomic: req.AmountAtomic,
@@ -417,7 +536,7 @@ func (a *app) handleVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := a.store.markVerified(ctx, record.ID, req.TxSignature, req.ClientWallet, result.VerifiedAt); err != nil {
+	if err := a.store.markVerified(ctx, record.ID, req.TxSignature, req.ClientWallet, result.VerifiedAt, result.Mode); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
@@ -449,6 +568,42 @@ func (a *app) handleGetTools(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, items)
 }
 
+func (a *app) handleUpdateTool(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		PriceUSDC *float64 `json:"priceUsdc"`
+		Enabled   *bool    `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+	if body.PriceUSDC == nil && body.Enabled == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "provide priceUsdc and/or enabled"})
+		return
+	}
+
+	var priceAtomic *int64
+	if body.PriceUSDC != nil {
+		if *body.PriceUSDC < 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "priceUsdc must not be negative"})
+			return
+		}
+		atomic := int64(*body.PriceUSDC*1_000_000 + 0.5)
+		priceAtomic = &atomic
+	}
+
+	updated, err := a.store.updateToolPricing(r.Context(), chi.URLParam(r, "serverID"), chi.URLParam(r, "toolName"), priceAtomic, body.Enabled)
+	if errors.Is(err, errToolNotFound) {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "tool not found"})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
 func (a *app) handleGetRequests(w http.ResponseWriter, r *http.Request) {
 	items, err := a.store.listRequests(r.Context(), r.URL.Query().Get("serverId"), r.URL.Query().Get("status"))
 	if err != nil {
@@ -471,6 +626,15 @@ func (a *app) handleGetDashboardSummary(w http.ResponseWriter, r *http.Request) 
 	item, err := a.store.getDashboardSummary(r.Context(), r.URL.Query().Get("serverId"))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (a *app) handleGetReceipt(w http.ResponseWriter, r *http.Request) {
+	item, err := a.store.getReceiptByRequestID(r.Context(), chi.URLParam(r, "requestID"))
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "receipt not found"})
 		return
 	}
 	writeJSON(w, http.StatusOK, item)
@@ -527,6 +691,8 @@ func loadConfig() (config, error) {
 		PostgresURL:        getEnv("POSTGRES_URL", "postgres://postgres:postgres@localhost:5432/x402?sslmode=disable"),
 		RedisURL:           getEnv("REDIS_URL", "redis://localhost:6379"),
 		VerifierBaseURL:    getEnv("VERIFIER_BASE_URL", defaultVerifierURL),
+		UpstreamMCPURL:     getEnv("UPSTREAM_MCP_URL", ""),
+		DashboardOrigin:    getEnv("DASHBOARD_ORIGIN", "*"),
 		VerifyLockTTL:      defaultVerifyLockTTL,
 		ServerID:           getEnv("DEFAULT_SERVER_ID", defaultServerID),
 		ServerName:         getEnv("DEFAULT_SERVER_NAME", defaultServerName),
@@ -580,6 +746,7 @@ func newChallengeResponse(record paymentRequestRecord) challengeResponse {
 			TokenMint:    record.TokenMint,
 			Recipient:    record.Recipient,
 			Network:      record.Network,
+			Reference:    record.Reference,
 		},
 		Retry: retryMeta{
 			RequestID:      record.ID,
@@ -600,6 +767,7 @@ func challengeToView(record paymentRequestRecord) challengeView {
 		Recipient: record.Recipient,
 		Network:   record.Network,
 		Scheme:    record.Scheme,
+		Reference: record.Reference,
 		Status:    record.Status,
 		CreatedAt: record.CreatedAt,
 		ExpiresAt: record.ExpiresAt,
