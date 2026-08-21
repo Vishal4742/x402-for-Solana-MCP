@@ -14,7 +14,12 @@ export function KpiCard({
   className?: string;
 }) {
   return (
-    <div className={cn("p-6 hairline-r last:border-r-0 hairline-b", className)}>
+    <div
+      className={cn(
+        "hover-lift relative p-6 hairline-r last:border-r-0 hairline-b hover:bg-card/50",
+        className,
+      )}
+    >
       <div className="micro-label mb-6">— {label}</div>
       <div className="flex items-baseline gap-2">
         <div className="text-5xl font-light tracking-tight">{value}</div>

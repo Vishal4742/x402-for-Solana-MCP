@@ -99,12 +99,12 @@ function RequestDetail() {
                     <div className="font-mono text-xs text-muted-foreground">
                       {new Date(ev.timestamp).toLocaleTimeString()}
                       {ev.durationMs != null && (
-                        <span className="ml-2 text-foreground/60">+{ev.durationMs}ms</span>
+                        <span className="ml-2 text-muted-foreground">+{ev.durationMs}ms</span>
                       )}
                     </div>
                   </div>
                   {ev.payload && (
-                    <pre className="mt-3 hairline bg-card/40 p-3 text-[0.7rem] font-mono text-foreground/75 overflow-x-auto">
+                    <pre className="mt-3 hairline bg-card/50 p-3 text-[0.7rem] font-mono text-foreground/70 overflow-x-auto">
                       {JSON.stringify(ev.payload, null, 2)}
                     </pre>
                   )}

@@ -3,6 +3,7 @@ import { EtherBackgroundCanvas } from "@/components/EtherBackgroundCanvas";
 import { Pill, MicroLabel, HairlineDivider } from "@/components/Editorial";
 import { CodeBlock } from "@/components/CodeBlock";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Reveal } from "@/components/Reveal";
 
 export function LandingHeader() {
   return (
@@ -32,7 +33,8 @@ export function LandingHeader() {
 export function Hero() {
   return (
     <section className="relative min-h-[92svh] hairline-b overflow-hidden">
-      <EtherBackgroundCanvas className="absolute inset-0 h-full w-full" />
+      {/* Desaturate + dim the sunset toward the monochrome brand and away from blowing out text contrast. */}
+      <EtherBackgroundCanvas className="absolute inset-0 h-full w-full [filter:saturate(0.65)_brightness(0.82)]" />
       <div className="hero-reference-overlay absolute inset-0" />
 
       <div className="relative container-editorial pt-24 pb-10 min-h-[92svh] flex flex-col">
@@ -40,20 +42,20 @@ export function Hero() {
 
         <div className="mt-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-end">
           <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 hairline px-3 py-2 font-mono text-[0.68rem] uppercase text-foreground/70">
+            <div className="animate-rise delay-1 inline-flex items-center gap-2 hairline px-3 py-2 font-mono text-[0.68rem] uppercase text-foreground/70">
               <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
               Devnet live · x402.sol.usdc.v1
             </div>
-            <h1 className="display-xl mt-8 max-w-[9ch]">
+            <h1 className="display-xl mt-8 max-w-[9ch] animate-rise delay-2">
               PAID MCP
               <br />
-              <span className="text-foreground/58">TOOL CALLS.</span>
+              <span className="text-muted-foreground">TOOL CALLS.</span>
             </h1>
-            <p className="mt-8 max-w-2xl text-base sm:text-lg text-foreground/80 leading-relaxed">
+            <p className="mt-8 max-w-2xl text-base sm:text-lg text-foreground/80 leading-relaxed animate-rise delay-3">
               x402/sol wraps your MCP server with wallet-native USDC billing: return a 402
               challenge, verify the Solana transfer, then execute with a signed receipt.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-3 animate-rise delay-4">
               <Link to="/dashboard" className="pill pill-solid">
                 Launch Dashboard ⊕
               </Link>
@@ -64,7 +66,7 @@ export function Hero() {
           </div>
 
           <div className="lg:col-span-5">
-            <div className="hero-terminal">
+            <div className="hero-terminal animate-rise delay-3">
               <div className="flex items-center justify-between hairline-b px-4 py-3 font-mono text-[0.68rem] uppercase text-muted-foreground">
                 <span>Live payment scheme</span>
                 <span>x402.sol.usdc.v1</span>
@@ -78,13 +80,13 @@ export function Hero() {
                 ].map((step) => (
                   <div key={step.n} className="contents">
                     <span className="text-muted-foreground">{step.n}</span>
-                    <span className="text-foreground/82">{step.label}</span>
+                    <span className="text-foreground/80">{step.label}</span>
                     <span className="text-status-success">{step.time}</span>
                   </div>
                 ))}
               </div>
               <div className="hairline-t p-5">
-                <pre className="overflow-hidden text-[0.7rem] leading-relaxed text-foreground/68">{`receipt {
+                <pre className="overflow-hidden text-[0.7rem] leading-relaxed text-foreground/70">{`receipt {
   amount: "0.005 USDC"
   network: "solana:devnet"
   status: "executed"
@@ -114,7 +116,7 @@ export function StatStrip() {
   ];
   return (
     <section className="hairline-b">
-      <div className="container-editorial grid grid-cols-1 md:grid-cols-3">
+      <Reveal as="div" stagger className="container-editorial grid grid-cols-1 md:grid-cols-3">
         {stats.map((s, i) => (
           <div
             key={s.label}
@@ -127,7 +129,7 @@ export function StatStrip() {
             </div>
           </div>
         ))}
-      </div>
+      </Reveal>
     </section>
   );
 }
@@ -170,7 +172,7 @@ export function Lifecycle() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-px bg-hairline">
           {lifecycleSteps.map((s) => (
-            <div key={s.n} className="bg-background p-5 min-h-[200px] flex flex-col">
+            <div key={s.n} className="hover-lift relative bg-background p-5 min-h-[200px] flex flex-col hover:bg-card/50">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs text-muted-foreground">{s.n}</span>
                 <span className="h-1 w-1 rounded-full bg-foreground" />
@@ -194,7 +196,7 @@ export function BigCopy() {
         <div className="col-span-12 md:col-span-2">
           <MicroLabel number="003">Thesis</MicroLabel>
         </div>
-        <p className="col-span-12 md:col-span-8 text-2xl md:text-4xl tracking-tight leading-[1.15] text-foreground/85">
+        <p className="col-span-12 md:col-span-8 text-2xl md:text-4xl tracking-tight leading-[1.15] text-foreground/80">
           Wrap an existing MCP server in minutes.{" "}
           <span className="text-foreground">Price tools individually.</span> Settle on Solana.{" "}
           <span className="text-foreground">Inspect every receipt</span> — and every failed payment
@@ -260,7 +262,7 @@ export function Features() {
               <div className="micro-label">— {f.label}</div>
               <h3 className="mt-4 text-2xl tracking-tight">{f.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{f.desc}</p>
-              <pre className="mt-auto pt-6 font-mono text-[0.7rem] text-foreground/60 hairline-t pt-4">
+              <pre className="mt-auto pt-6 font-mono text-[0.7rem] text-muted-foreground hairline-t pt-4">
                 {f.code}
               </pre>
             </div>
@@ -298,7 +300,7 @@ export function Architecture() {
           </p>
         </div>
 
-        <div className="hairline p-8 md:p-12 bg-card/30">
+        <div className="hairline p-8 md:p-12 bg-card/50">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-px bg-hairline">
             {nodes.map((n, i) => (
               <div key={n.label} className="bg-background p-6 text-center relative">
@@ -407,6 +409,47 @@ x-req-id:     req_8KpL3xN2
 → 200 { "status": "verified" }`}
           />
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function SystemVisual() {
+  // Drop an AI-generated image at apps/frontend/public/system-visual.jpg to fill this
+  // band. If it's absent the image hides itself and the near-black base shows through,
+  // so the section still reads as intentional.
+  return (
+    <section className="relative hairline-b overflow-hidden bg-background">
+      <div className="relative h-[72vh] min-h-[440px] w-full">
+        <img
+          src="/system-visual.jpg"
+          alt=""
+          aria-hidden
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+          className="absolute inset-0 h-full w-full object-cover opacity-80 [filter:grayscale(100%)_contrast(130%)_brightness(0.72)]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-transparent to-background" />
+
+        <div className="absolute left-6 top-6">
+          <MicroLabel>System visualization</MicroLabel>
+        </div>
+
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Link
+            to="/dashboard"
+            className="flex h-44 w-44 items-center justify-center rounded-full border border-white/70 text-center font-mono text-[0.7rem] uppercase leading-relaxed tracking-wider text-white backdrop-blur-sm transition-transform duration-300 hover:scale-105 hover:bg-white/10"
+          >
+            Inspect
+            <br />
+            the ledger ⊕
+          </Link>
+        </div>
+
+        <a href="#lifecycle" className="pill absolute bottom-6 right-6 text-[0.7rem]">
+          View lifecycle ⊕
+        </a>
       </div>
     </section>
   );

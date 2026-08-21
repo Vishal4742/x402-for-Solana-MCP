@@ -3,7 +3,9 @@
   "private": true,
   "packageManager": "pnpm@10.17.1",
   "scripts": {
-    "build:sdk": "pnpm --filter @x402/sdk build"
+    "build:sdk": "pnpm --filter @x402/sdk build",
+    "example:server": "pnpm --filter @x402/example-server dev",
+    "example:demo": "pnpm --filter @x402/example-client demo",
+    "example:setup": "pnpm --filter @x402/example-client setup-devnet"
   }
 }
-

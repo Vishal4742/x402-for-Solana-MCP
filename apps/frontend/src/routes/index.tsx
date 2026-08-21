@@ -10,6 +10,7 @@ import {
   LandingHeader,
   Lifecycle,
   StatStrip,
+  SystemVisual,
   UseCases,
 } from "@/components/landing/LandingSections";
 
@@ -44,6 +45,7 @@ function LandingPage() {
         <BigCopy />
         <Features />
         <Architecture />
+        <SystemVisual />
         <UseCases />
         <CodeShowcase />
         <FinalCta />

@@ -1,0 +1,21 @@
+{
+  "name": "@x402/example-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup-devnet": "tsx src/setup-devnet.ts",
+    "demo": "tsx src/demo.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0",
+    "@x402/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  }
+}

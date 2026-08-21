@@ -69,7 +69,7 @@ function SettingsPage() {
         <div className="hairline-b py-4 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
             <div className="micro-label shrink-0">— Secret key</div>
-            <div className="font-mono text-sm text-foreground/85 flex-1 text-right truncate">
+            <div className="font-mono text-sm text-foreground/80 flex-1 text-right truncate">
               {revealed ? server.apiKey : "•".repeat(server.apiKey.length)}
             </div>
           </div>

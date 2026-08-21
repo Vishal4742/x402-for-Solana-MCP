@@ -12,14 +12,14 @@ export function CodeBlock({
   filename?: string;
 }) {
   return (
-    <div className={cn("hairline bg-card/40", className)}>
+    <div className={cn("hairline bg-card/50", className)}>
       {filename && (
         <div className="hairline-b px-4 py-2 flex items-center justify-between">
           <span className="font-mono text-xs text-muted-foreground">{filename}</span>
           <span className="micro-label">— {language}</span>
         </div>
       )}
-      <pre className="p-4 overflow-x-auto text-xs font-mono text-foreground/85 leading-relaxed">
+      <pre className="p-4 overflow-x-auto text-xs font-mono text-foreground/80 leading-relaxed">
         <code>{code}</code>
       </pre>
     </div>

@@ -11,7 +11,7 @@ export function MicroLabel({
 }) {
   return (
     <div className={cn("micro-label flex items-center gap-2", className)}>
-      {number && <span className="font-mono text-foreground/60">{number}</span>}
+      {number && <span className="font-mono text-muted-foreground">{number}</span>}
       <span>—</span>
       <span>{children}</span>
     </div>
